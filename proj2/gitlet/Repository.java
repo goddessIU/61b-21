@@ -63,7 +63,7 @@ public class Repository {
         Utils.writeObject(STAGED_FILE, stage);
 
         // initial cur_commit
-        Commit commit = new Commit(null, "initial commit", null);
+        Commit commit = new Commit(null, "initial commit", null, null);
         makeCommit(commit);
 
         // something else to do.
@@ -101,6 +101,7 @@ public class Repository {
             stage.addFile(shaCode, fileName);
             Utils.writeObject(STAGED_FILE, stage);
         }
+
     }
 
     /**
@@ -109,9 +110,10 @@ public class Repository {
     public static void commit(String message) {
         Stage stage = Utils.readObject(STAGED_FILE, Stage.class);
         Commit cur_commit = readObject(COMMIT_FILE, Commit.class);
-        Commit commit = new Commit(cur_commit, message, stage.getStagedFileMapper());
+        Commit commit = new Commit(cur_commit, message, stage.getStagedFileMapper(), stage.getDeletedFileSet());
         // clear stage file and stage obj
         Utils.writeObject(STAGED_FILE, new Stage());
+
 
         // write commit to file, update cur_commit
         makeCommit(commit);
@@ -160,6 +162,7 @@ public class Repository {
             f.delete();
         }
         writeObject(STAGED_FILE, stage);
+
 
         if (!isStage && !isTracked) {
             System.out.println("No reason to remove the file.");

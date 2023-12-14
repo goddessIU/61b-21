@@ -69,8 +69,11 @@ public class Stage implements Serializable, Dumpable{
         deletedFileSet.add(fileName);
     }
 
+    public TreeSet<String> getDeletedFileSet() { return deletedFileSet; }
+
     public void dump() {
         System.out.println(stagedFileMapper);
+        System.out.println(deletedFileSet);
     }
 
 

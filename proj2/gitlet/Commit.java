@@ -7,13 +7,14 @@ import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.Date; // TODO: You'll likely use this in this class
 import java.util.TreeMap;
+import java.util.TreeSet;
 
 /** Represents a gitlet commit object.
  *  TODO: It's a good idea to give a description here of what else this Class
  *  does at a high level.
  *
  */
-public class Commit implements Serializable {
+public class Commit implements Serializable, Dumpable {
     /**
      *
      * List all instance variables of the Commit class here with a useful
@@ -30,7 +31,7 @@ public class Commit implements Serializable {
     /** timestamp */
     private Date time;
 
-    public Commit(Commit parent, String message, TreeMap<String, String> stagedFileMapper) {
+    public Commit(Commit parent, String message, TreeMap<String, String> stagedFileMapper, TreeSet<String> deletedFileSet) {
         this.message = message;
         this.parent = parent;
         if (parent == null) {
@@ -39,7 +40,7 @@ public class Commit implements Serializable {
             this.commitId = Utils.sha1(this.message, "", this.time.toString(), this.fileMapper.values().toString());
         } else {
             this.time = new Date();
-            fileMapper = parent.getUpdatedMapper(stagedFileMapper);
+            fileMapper = parent.getUpdatedMapper(stagedFileMapper, deletedFileSet);
             this.commitId = Utils.sha1(this.message, this.parent.getCommitId(), this.time.toString(), this.fileMapper.values().toString());
         }
     }
@@ -47,11 +48,16 @@ public class Commit implements Serializable {
     /**
      * make the new map
      */
-    private TreeMap<String, String> getUpdatedMapper(TreeMap<String, String> stagedFileMapper) {
+    private TreeMap<String, String> getUpdatedMapper(TreeMap<String, String> stagedFileMapper, TreeSet<String> deletedFileSet) {
         TreeMap<String, String> mapperClone = (TreeMap<String, String>) fileMapper.clone();
         for (String fileName : stagedFileMapper.keySet()) {
-            if (mapperClone.containsKey(fileName)) {
+            if (!mapperClone.containsKey(fileName)) {
                 mapperClone.put(fileName, stagedFileMapper.get(fileName));
+            }
+        }
+        for (String fileName : deletedFileSet) {
+            if (mapperClone.containsKey(fileName)) {
+                mapperClone.remove(fileName);
             }
         }
         return mapperClone;
@@ -83,5 +89,9 @@ public class Commit implements Serializable {
 
     public Date getTime() {
         return time;
+    }
+
+    public void dump() {
+        System.out.println(fileMapper);
     }
 }
