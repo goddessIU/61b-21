@@ -45,6 +45,20 @@ public class Main {
                 }
                 Repository.commit(args[1]);
                 break;
+            case "log":
+                if (args.length != 1) {
+                    System.out.println("Incorrect operands.");
+                    return;
+                }
+                Repository.log();
+                break;
+            case "rm":
+                if (args.length != 2) {
+                    System.out.println("Incorrect operands.");
+                    return;
+                }
+                Repository.rm(args[1]);
+                break;
             default:
                 System.out.println("No command with that name exists.");
         }

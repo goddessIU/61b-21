@@ -4,6 +4,7 @@ package gitlet;
 
 import java.io.Serializable;
 import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.util.Date; // TODO: You'll likely use this in this class
 import java.util.TreeMap;
 
@@ -32,11 +33,12 @@ public class Commit implements Serializable {
     public Commit(Commit parent, String message, TreeMap<String, String> stagedFileMapper) {
         this.message = message;
         this.parent = parent;
-        this.time = new Date();
         if (parent == null) {
+            this.time = new Date(0);
             fileMapper = new TreeMap<>();
             this.commitId = Utils.sha1(this.message, "", this.time.toString(), this.fileMapper.values().toString());
         } else {
+            this.time = new Date();
             fileMapper = parent.getUpdatedMapper(stagedFileMapper);
             this.commitId = Utils.sha1(this.message, this.parent.getCommitId(), this.time.toString(), this.fileMapper.values().toString());
         }
@@ -55,7 +57,31 @@ public class Commit implements Serializable {
         return mapperClone;
     }
 
-    private String getCommitId() {
+    public boolean isTrackedFile(String fileName) {
+        return fileMapper.containsKey(fileName);
+    }
+
+    public boolean isNotNeedToTrack(String fileName, String shaCode) {
+        return fileMapper.containsKey(fileName) && fileMapper.get(fileName).equals(shaCode);
+    }
+
+    public void removeFile(String fileName) {
+        fileMapper.remove(fileName);
+    }
+
+    public String getCommitId() {
         return  this.commitId;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public Commit getParent() {
+        return parent;
+    }
+
+    public Date getTime() {
+        return time;
     }
 }

@@ -10,10 +10,16 @@ public class Stage implements Serializable, Dumpable{
     private TreeMap<String, String> stagedFileMapper;
 
     /**
+     * deleted file mapper
+     */
+    private TreeSet<String> deletedFileSet;
+
+    /**
      * add file code to sets
      */
     public Stage() {
         stagedFileMapper = new TreeMap<>();
+        deletedFileSet = new TreeSet<>();
     }
     public void addFile(String code, String fileName) {
         stagedFileMapper.put(fileName, code);
@@ -49,6 +55,18 @@ public class Stage implements Serializable, Dumpable{
 
     public TreeMap<String, String> getStagedFileMapper() {
         return this.stagedFileMapper;
+    }
+
+    public boolean isStagedFile(String fileName) {
+        return stagedFileMapper.containsKey(fileName);
+    }
+
+    public void removeFile(String fileName) {
+        stagedFileMapper.remove(fileName);
+    }
+
+    public void stagedForCommitRm(String fileName) {
+        deletedFileSet.add(fileName);
     }
 
     public void dump() {

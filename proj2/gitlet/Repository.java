@@ -2,6 +2,9 @@ package gitlet;
 
 import java.io.File;
 import java.io.Serializable;
+import java.text.SimpleDateFormat;
+import java.util.Locale;
+import java.util.TimeZone;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
@@ -78,6 +81,13 @@ public class Repository {
 
         String shaCode = Utils.sha1(Utils.readContentsAsString(file));
         Stage stage = Utils.readObject(STAGED_FILE, Stage.class);
+        Commit cur_commit = readObject(COMMIT_FILE, Commit.class);
+        if (cur_commit.isNotNeedToTrack(fileName, shaCode)) {
+            stage.removeFile(fileName);
+            Utils.writeObject(STAGED_FILE, stage);
+            return;
+        }
+
         if (stage.isNeedToStage(fileName, shaCode)) {
             File stagedFile = Utils.join(BLOBS_DIR, shaCode);
             if (!stagedFile.exists()) {
@@ -112,6 +122,48 @@ public class Repository {
      */
     public static void makeCommit(Commit commit) {
         Utils.writeObject(COMMIT_FILE, commit);
+    }
+
+    /**
+     * log command
+     */
+    public static void log() {
+        Commit cur_commit = readObject(COMMIT_FILE, Commit.class);
+        while (cur_commit != null) {
+            System.out.println("===");
+            System.out.println("commit " + cur_commit.getCommitId());
+            SimpleDateFormat sdf = new SimpleDateFormat("EEE MMM dd HH:mm:ss yyyy Z", Locale.US);
+            sdf.setTimeZone(TimeZone.getTimeZone("GMT-0800"));
+            String formattedDate = sdf.format(cur_commit.getTime());
+            System.out.println("Date: " + formattedDate);
+            System.out.println(cur_commit.getMessage());
+            System.out.println();
+            cur_commit = cur_commit.getParent();
+        }
+    }
+
+    /**
+     * rm command
+     */
+    public static void rm(String fileName) {
+        Stage stage = Utils.readObject(STAGED_FILE, Stage.class);
+        Commit cur_commit = readObject(COMMIT_FILE, Commit.class);
+        boolean isStage = stage.isStagedFile(fileName);
+        boolean isTracked = cur_commit.isTrackedFile(fileName);
+        if (isStage) {
+            stage.removeFile(fileName);
+        }
+
+        if (isTracked) {
+            stage.stagedForCommitRm(fileName);
+            File f = Utils.join(CWD, fileName);
+            f.delete();
+        }
+        writeObject(STAGED_FILE, stage);
+
+        if (!isStage && !isTracked) {
+            System.out.println("No reason to remove the file.");
+        }
     }
 
     // just for test convenently
