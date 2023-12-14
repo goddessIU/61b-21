@@ -3,10 +3,7 @@ package gitlet;
 import java.io.File;
 import java.io.Serializable;
 import java.text.SimpleDateFormat;
-import java.util.Locale;
-import java.util.TimeZone;
-import java.util.TreeMap;
-import java.util.TreeSet;
+import java.util.*;
 
 import static gitlet.Utils.*;
 
@@ -240,6 +237,8 @@ public class Repository {
             System.out.println("No need to checkout the current branch.");
             return;
         }
+
+        List<String> files = Utils.plainFilenamesIn(CWD);
     }
 
     /**
