@@ -70,6 +70,21 @@ public class Repository {
     }
 
     /**
+     * status command
+     */
+    public static void status() {
+        Commit_Tree ct = getCommitTree();
+        Stage stage = Utils.readObject(STAGED_FILE, Stage.class);
+        System.out.println("=== Branches ===");
+        ct.printBranches();
+        System.out.println();
+        System.out.println("=== Staged Files ===");
+        stage.printStagedFiles();
+        System.out.println();
+
+    }
+
+    /**
      * add command
      */
     public static void add(String fileName) {
@@ -81,7 +96,8 @@ public class Repository {
 
         String shaCode = Utils.sha1(Utils.readContentsAsString(file));
         Stage stage = Utils.readObject(STAGED_FILE, Stage.class);
-        Commit cur_commit = readObject(COMMIT_FILE, Commit.class);
+        Commit_Tree ct = getCommitTree();
+        Commit cur_commit = ct.getHeader();
         if (cur_commit.isNotNeedToTrack(fileName, shaCode)) {
             stage.removeFile(fileName);
             Utils.writeObject(STAGED_FILE, stage);
@@ -109,8 +125,8 @@ public class Repository {
      */
     public static void commit(String message) {
         Stage stage = Utils.readObject(STAGED_FILE, Stage.class);
-        Commit cur_commit = readObject(COMMIT_FILE, Commit.class);
-        Commit commit = new Commit(cur_commit, message, stage.getStagedFileMapper(), stage.getDeletedFileSet());
+        Commit cur_commit = getCommitTree().getHeader();
+        Commit commit = new Commit(cur_commit.getCommitId(), message, stage.getStagedFileMapper(), stage.getDeletedFileSet());
         // clear stage file and stage obj
         Utils.writeObject(STAGED_FILE, new Stage());
 
@@ -123,14 +139,23 @@ public class Repository {
      * make commit persisently
      */
     public static void makeCommit(Commit commit) {
-        Utils.writeObject(COMMIT_FILE, commit);
+        if (commit.getParentSha() == null) {
+            Commit_Tree ct = new Commit_Tree(commit);
+            ct.addCommit(commit);
+            writeCommitTree(ct);
+        } else {
+            Commit_Tree ct = getCommitTree();
+            ct.addCommit(commit);
+            writeCommitTree(ct);
+        }
     }
 
     /**
      * log command
      */
     public static void log() {
-        Commit cur_commit = readObject(COMMIT_FILE, Commit.class);
+        Commit_Tree ct = getCommitTree();
+        Commit cur_commit = ct.getHeader();
         while (cur_commit != null) {
             System.out.println("===");
             System.out.println("commit " + cur_commit.getCommitId());
@@ -140,7 +165,11 @@ public class Repository {
             System.out.println("Date: " + formattedDate);
             System.out.println(cur_commit.getMessage());
             System.out.println();
-            cur_commit = cur_commit.getParent();
+            String parentSha = cur_commit.getParentSha();
+            if (parentSha == null) {
+                break;
+            }
+            cur_commit = ct.getCommitById(parentSha);
         }
     }
 
@@ -149,7 +178,7 @@ public class Repository {
      */
     public static void rm(String fileName) {
         Stage stage = Utils.readObject(STAGED_FILE, Stage.class);
-        Commit cur_commit = readObject(COMMIT_FILE, Commit.class);
+        Commit cur_commit = getCommitTree().getHeader();
         boolean isStage = stage.isStagedFile(fileName);
         boolean isTracked = cur_commit.isTrackedFile(fileName);
         if (isStage) {
@@ -167,6 +196,73 @@ public class Repository {
         if (!isStage && !isTracked) {
             System.out.println("No reason to remove the file.");
         }
+    }
+
+    private static void checkoutHelper(String fileName, Commit cur_commit) {
+        if (!cur_commit.isTrackedFile(fileName)) {
+            System.out.println("File does not exist in that commit.");
+            return;
+        }
+
+        File f = Utils.join(CWD, fileName);
+        File commit_file = Utils.join(BLOBS_DIR, cur_commit.getShaCode(fileName));
+        Utils.writeContents(f, Utils.readContents(commit_file));
+    }
+
+    public static void checkout(String fileName) {
+        Commit cur_commit = getCommitTree().getHeader();
+        checkoutHelper(fileName, cur_commit);
+    }
+
+    public static void checkout2(String commitId, String fileName) {
+        Commit_Tree ct = getCommitTree();
+        Commit commit = (commitId.length() <40) ? ct.getCommitByPartialId(commitId)
+                : ct.getCommitById(commitId);
+        /**
+         * commit maybe is null because the id is too short
+         */
+
+        if (commit == null) {
+            System.out.println("No commit with that id exists.");
+            return;
+        }
+        checkoutHelper(fileName, commit);
+    }
+
+    public static void checkout3(String branchName) {
+        Commit_Tree ct = getCommitTree();
+        if (!ct.isExistBranch(branchName)) {
+            System.out.println("No such branch exists.");
+            return;
+        }
+
+        if (ct.getCurBranch().equals(branchName)) {
+            System.out.println("No need to checkout the current branch.");
+            return;
+        }
+    }
+
+    /**
+     * Before you ever call branch, your code should be running with a default branch called master
+     */
+    public static void newBranch(String branchName) {
+        Commit_Tree ct = getCommitTree();
+        if (ct.isExistBranch(branchName)) {
+            System.out.println("A branch with that name already exists.");
+            return;
+        }
+        Commit cur_commit = ct.getHeader();
+        ct.newBranch(branchName, cur_commit);
+        writeCommitTree(ct);
+    }
+
+
+    public static Commit_Tree getCommitTree() {
+        return Utils.readObject(COMMIT_FILE, Commit_Tree.class);
+    }
+
+    public static void writeCommitTree(Commit_Tree ct) {
+        Utils.writeObject(COMMIT_FILE, ct);
     }
 
     // just for test convenently

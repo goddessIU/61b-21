@@ -27,11 +27,11 @@ public class Commit implements Serializable, Dumpable {
     private String commitId;
     /** mapper of fileNmae -> blob */
     private TreeMap<String, String> fileMapper;
-    private Commit parent;
+    private String parent;
     /** timestamp */
     private Date time;
 
-    public Commit(Commit parent, String message, TreeMap<String, String> stagedFileMapper, TreeSet<String> deletedFileSet) {
+    public Commit(String parent, String message, TreeMap<String, String> stagedFileMapper, TreeSet<String> deletedFileSet) {
         this.message = message;
         this.parent = parent;
         if (parent == null) {
@@ -40,8 +40,9 @@ public class Commit implements Serializable, Dumpable {
             this.commitId = Utils.sha1(this.message, "", this.time.toString(), this.fileMapper.values().toString());
         } else {
             this.time = new Date();
-            fileMapper = parent.getUpdatedMapper(stagedFileMapper, deletedFileSet);
-            this.commitId = Utils.sha1(this.message, this.parent.getCommitId(), this.time.toString(), this.fileMapper.values().toString());
+            Commit p_commit = Repository.getCommitTree().getCommitById(parent);
+            fileMapper =  p_commit.getUpdatedMapper(stagedFileMapper, deletedFileSet);
+            this.commitId = Utils.sha1(this.message, this.parent, this.time.toString(), this.fileMapper.values().toString());
         }
     }
 
@@ -51,9 +52,7 @@ public class Commit implements Serializable, Dumpable {
     private TreeMap<String, String> getUpdatedMapper(TreeMap<String, String> stagedFileMapper, TreeSet<String> deletedFileSet) {
         TreeMap<String, String> mapperClone = (TreeMap<String, String>) fileMapper.clone();
         for (String fileName : stagedFileMapper.keySet()) {
-            if (!mapperClone.containsKey(fileName)) {
-                mapperClone.put(fileName, stagedFileMapper.get(fileName));
-            }
+            mapperClone.put(fileName, stagedFileMapper.get(fileName));
         }
         for (String fileName : deletedFileSet) {
             if (mapperClone.containsKey(fileName)) {
@@ -84,11 +83,26 @@ public class Commit implements Serializable, Dumpable {
     }
 
     public Commit getParent() {
-        return parent;
+        return Repository.getCommitTree().getCommitById(parent);
     }
+
+    public String getParentSha() { return parent; }
 
     public Date getTime() {
         return time;
+    }
+
+    public String getShaCode(String fileName) { return fileMapper.get(fileName); }
+
+    public Commit findParent(String commitId) {
+        Commit t = this;
+        while (t != null) {
+            if (t.getCommitId().startsWith(commitId)) {
+                return t;
+            }
+            t = t.getParent();
+        }
+        return null;
     }
 
     public void dump() {
